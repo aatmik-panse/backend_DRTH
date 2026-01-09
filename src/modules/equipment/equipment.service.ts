@@ -3,8 +3,18 @@ import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { AppError } from '../../utils/appError';
 
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY || '');
+
+const equipmentItemSchema = z.object({
+    name: z.string(),
+    confidence: z.number(),
+});
+
+const equipmentListSchema = z.array(equipmentItemSchema);
 
 export class EquipmentService {
     async getAllEquipment() {
@@ -16,14 +26,18 @@ export class EquipmentService {
             throw new AppError('Gemini API Key not configured', 500);
         }
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-2.5-flash',
+            generationConfig: {
+                responseMimeType: 'application/json',
+                responseSchema: zodToJsonSchema(equipmentListSchema as any) as any,
+            },
+        });
 
         const prompt = `
       Identify the gym equipment in this image. 
-      Return a JSON array of objects, where each object has a "name" (string) and "confidence" (number between 0 and 1).
       Focus on standard gym equipment like: Bench Press, Squat Rack, Dumbbells, Treadmill, Leg Press, etc.
       Only return equipment with high confidence.
-      Output pure JSON, no markdown.
     `;
 
         const imagePart = {
@@ -36,12 +50,7 @@ export class EquipmentService {
         try {
             const result = await model.generateContent([prompt, imagePart]);
             const response = await result.response;
-            let text = response.text();
-
-            // Clean up markdown code blocks if present
-            text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-            const detectedItems = JSON.parse(text);
+            const detectedItems = equipmentListSchema.parse(JSON.parse(response.text()));
             return detectedItems;
         } catch (error) {
             console.error('Gemini API Error:', error);
