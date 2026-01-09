@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                  String           @id @default(uuid())
+  email               String           @unique
+  password            String // Added password for auth
+  name                String?
+  age                 Int?
+  height              Float?
+  weight              Float?
+  unit                String           @default("metric") // metric, imperial
+  experienceLevel     String? // beginner, intermediate, advanced
+  fitnessGoal         String? // muscle_gain, fat_loss, strength
+  workoutDaysPerWeek  Int?
+  sessionDuration     Int? // minutes
+  selectedGymId       String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  selectedGym         Gym?             @relation(fields: [selectedGymId], references: [id])
+  userEquipment       UserEquipment[]
+  workoutPlans        WorkoutPlan[]
+  workoutProgress     WorkoutProgress[]
+}
+
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  users     User[]
+  userEquipment UserEquipment[]
+}
+
+model Equipment {
+  id                String              @id @default(uuid())
+  name              String
+  category          String // cardio, free_weights, machines, cable, bodyweight
+  iconUrl           String?
+  createdAt         DateTime            @default(now())
+  userEquipment     UserEquipment[]
+  exerciseEquipment ExerciseEquipment[]
+}
+
+model UserEquipment {
+  id          String    @id @default(uuid())
+  userId      String
+  equipmentId String
+  gymId       String?
+  confirmedAt DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  gym         Gym?      @relation(fields: [gymId], references: [id])
+
+  @@unique([userId, equipmentId])
+}
+
+model Exercise {
+  id                String              @id @default(uuid())
+  name              String
+  muscleGroup       String
+  category          String?
+  difficulty        String? // beginner, intermediate, advanced
+  instructions      String?
+  formTips          String?
+  videoUrl          String?
+  createdAt         DateTime            @default(now())
+  exerciseEquipment ExerciseEquipment[]
+  planExercises     PlanExercise[]
+  workoutProgress   WorkoutProgress[]
+}
+
+model ExerciseEquipment {
+  exerciseId  String
+  equipmentId String
+  isPrimary   Boolean   @default(true)
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id])
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@id([exerciseId, equipmentId])
+}
+
+model WorkoutPlan {
+  id        String    @id @default(uuid())
+  userId    String
+  splitType String // ppl, upper_lower, full_body, bro_split
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id])
+  days      PlanDay[]
+  progress  WorkoutProgress[]
+}
+
+model PlanDay {
+  id        String         @id @default(uuid())
+  planId    String
+  dayNumber Int // 1-7
+  dayName   String
+  focus     String?
+  isRestDay Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  plan      WorkoutPlan    @relation(fields: [planId], references: [id])
+  exercises PlanExercise[]
+}
+
+model PlanExercise {
+  id         String   @id @default(uuid())
+  planDayId  String
+  exerciseId String
+  orderIndex Int
+  sets       Int
+  reps       String
+  notes      String?
+  createdAt  DateTime @default(now())
+  planDay    PlanDay  @relation(fields: [planDayId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+}
+
+model WorkoutProgress {
+  id             String      @id @default(uuid())
+  userId         String
+  planId         String
+  exerciseId     String
+  workoutDate    DateTime
+  dayIndex       Int // 0-6
+  weekNumber     Int
+  completed      Boolean     @default(false)
+  completedAt    DateTime?
+  setsCompleted  Int?
+  repsCompleted  String?
+  weightUsed     Float?
+  notes          String?
+  user           User        @relation(fields: [userId], references: [id])
+  plan           WorkoutPlan @relation(fields: [planId], references: [id])
+  exercise       Exercise    @relation(fields: [exerciseId], references: [id])
+
+  @@unique([userId, exerciseId, workoutDate])
+}
