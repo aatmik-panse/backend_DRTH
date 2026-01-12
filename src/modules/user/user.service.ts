@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma';
+import prisma from "../../config/prisma";
 import { UserProfileInput } from './user.dto';
 
 export class UserService {

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../config/prisma';
+import prisma from '../config/prisma';
 import { env } from '../config/env';
 import { AppError } from '../utils/appError';
 import { catchAsync } from '../utils/catchAsync';

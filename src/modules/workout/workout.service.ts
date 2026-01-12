@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma';
+import prisma from "../../config/prisma";
 import { AppError } from '../../utils/appError';
 import { Equipment, User, Exercise } from '../../generated/prisma';
 

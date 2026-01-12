@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { prisma } from '../../config/prisma';
+import prisma from "../../config/prisma";
 import { env } from '../../config/env';
 import { AppError } from '../../utils/appError';
 
