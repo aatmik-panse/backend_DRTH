@@ -48,9 +48,16 @@ export class EquipmentService {
         };
 
         try {
+            console.log('Sending request to Gemini...');
+            const startGemini = Date.now();
             const result = await model.generateContent([prompt, imagePart]);
-            const response = await result.response;
-            const detectedItems = equipmentListSchema.parse(JSON.parse(response.text()));
+            const response = await result.response; // This awaits the full response
+            console.log(`Gemini response received in ${Date.now() - startGemini}ms`);
+
+            const textResponse = response.text();
+            // console.log('Gemini raw response:', textResponse.substring(0, 100) + '...');
+
+            const detectedItems = equipmentListSchema.parse(JSON.parse(textResponse));
             return detectedItems;
         } catch (error) {
             console.error('Gemini API Error:', error);

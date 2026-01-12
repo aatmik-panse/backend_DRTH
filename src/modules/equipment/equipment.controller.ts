@@ -21,13 +21,16 @@ export class EquipmentController {
     });
 
     scanEquipment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+        const startTime = Date.now();
         if (!req.file) {
             return next(new AppError('No image uploaded', 400));
         }
 
-        logger.info('Scanning equipment image...');
+        logger.info(`Scanning equipment image... Size: ${req.file.size} bytes, Mime: ${req.file.mimetype}`);
 
         const detected = await equipmentService.scanEquipment(req.file.buffer, req.file.mimetype);
+
+        logger.info(`Scan completed in ${Date.now() - startTime}ms. Detected ${detected.length} items.`);
 
         res.status(200).json({
             status: 'success',
