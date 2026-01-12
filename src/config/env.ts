@@ -9,6 +9,7 @@ const envSchema = z.object({
     JWT_SECRET: z.string().min(1),
     JWT_EXPIRES_IN: z.string().default('7d'),
     GEMINI_API_KEY: z.string().optional(),
+    SUPABASE_JWT_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

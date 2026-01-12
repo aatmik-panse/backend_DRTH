@@ -15,11 +15,43 @@ export const protect = catchAsync(async (req: Request, res: Response, next: Next
         return next(new AppError('You are not logged in! Please log in to get access.', 401));
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { id: string };
+    const secret = env.SUPABASE_JWT_SECRET || env.JWT_SECRET;
 
-    const currentUser = await prisma.user.findUnique({
-        where: { id: decoded.id },
+    let decoded: any;
+    try {
+        decoded = jwt.verify(token, secret);
+    } catch (err) {
+        return next(new AppError('Invalid token. Please log in again.', 401));
+    }
+
+    // Determine user ID and Email from token (Supabase places 'sub' as ID, 'email' in payload)
+    const userId = decoded.sub || decoded.id;
+    const email = decoded.email;
+
+    // Check if user exists in local DB
+    // We try to find by ID first (if synced), or by email
+    let currentUser = await prisma.user.findFirst({
+        where: {
+            OR: [
+                { id: userId },
+                { email: email }
+            ]
+        },
     });
+
+    // User Sync: Create if not exists (for Supabase users)
+    if (!currentUser && email) {
+        // Create new user record
+        // ID strategy: use Supabase ID as our ID to keep them in sync
+        currentUser = await prisma.user.create({
+            data: {
+                id: userId,
+                email: email,
+                name: decoded.user_metadata?.full_name || decoded.name || email.split('@')[0],
+                password: null, // No password for external auth
+            }
+        });
+    }
 
     if (!currentUser) {
         return next(new AppError('The user belonging to this token does no longer exist.', 401));

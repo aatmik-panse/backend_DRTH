@@ -45,7 +45,7 @@ export class AuthService {
             where: { email: data.email },
         });
 
-        if (!user || !(await bcrypt.compare(data.password, user.password))) {
+        if (!user || !user.password || !(await bcrypt.compare(data.password, user.password))) {
             throw new AppError('Incorrect email or password', 401);
         }
 

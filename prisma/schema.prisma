@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                  String           @id @default(uuid())
   email               String           @unique
-  password            String // Added password for auth
+  password            String? // Added password for auth, optional for Supabase users
   name                String?
   age                 Int?
   height              Float?
