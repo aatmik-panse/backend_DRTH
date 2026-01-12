@@ -18,9 +18,11 @@ export const protect = catchAsync(async (req: Request, res: Response, next: Next
     const secret = env.SUPABASE_JWT_SECRET || env.JWT_SECRET;
 
     let decoded: any;
+    // console.log('Using secret starting with:', secret.substring(0, 5));
     try {
         decoded = jwt.verify(token, secret);
-    } catch (err) {
+    } catch (err: any) {
+        console.error('Token verification failed:', err);
         return next(new AppError('Invalid token. Please log in again.', 401));
     }
 
