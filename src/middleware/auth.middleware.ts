@@ -17,12 +17,19 @@ export const protect = catchAsync(async (req: Request, res: Response, next: Next
 
     const secret = env.SUPABASE_JWT_SECRET || env.JWT_SECRET;
 
+    // Debugging: Check token header and secret
+    const decodedToken: any = jwt.decode(token, { complete: true });
+    console.log('Debug - Token Header:', decodedToken?.header);
+    // console.log('Debug - Using Secret (first 5 chars):', secret?.substring(0, 5));
+
     let decoded: any;
-    // console.log('Using secret starting with:', secret.substring(0, 5));
     try {
         decoded = jwt.verify(token, secret);
     } catch (err: any) {
-        console.error('Token verification failed:', err);
+        console.error('Token verification failed:', err.message);
+        if (err.message.includes('invalid algorithm')) {
+            console.error('Algorithm mismatch. Token header:', decodedToken?.header);
+        }
         return next(new AppError('Invalid token. Please log in again.', 401));
     }
 
