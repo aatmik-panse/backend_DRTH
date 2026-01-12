@@ -11,6 +11,8 @@ const signToken = (id: string) => {
     });
 };
 
+import logger from '../../utils/logger';
+
 export class AuthService {
     async register(data: RegisterInput) {
         const existingUser = await prisma.user.findUnique({
@@ -32,6 +34,8 @@ export class AuthService {
             },
         });
 
+        logger.info(`New user registered: ${user.email}`);
+
         const token = signToken(user.id);
 
         // Remove password from output
@@ -48,6 +52,8 @@ export class AuthService {
         if (!user || !user.password || !(await bcrypt.compare(data.password, user.password))) {
             throw new AppError('Incorrect email or password', 401);
         }
+
+        logger.info(`User logged in: ${data.email}`);
 
         const token = signToken(user.id);
 

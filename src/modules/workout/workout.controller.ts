@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { WorkoutService } from './workout.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { AppError } from '../../utils/appError';
+import logger from '../../utils/logger';
 
 const workoutService = new WorkoutService();
 
@@ -15,6 +16,8 @@ export class WorkoutController {
     generatePlan = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         const userId = (req as any).user.id;
         const { splitType, equipmentIds } = generatePlanSchema.parse(req.body);
+
+        logger.info(`Generating workout plan for user ${userId} with split ${splitType}`);
 
         const plan = await workoutService.generatePlan(userId, splitType, equipmentIds);
 

@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserService } from './user.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { AppError } from '../../utils/appError';
+import logger from '../../utils/logger';
 
 const userService = new UserService();
 
@@ -26,6 +27,8 @@ export class UserController {
     updateProfile = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         const userId = (req as any).user.id;
         const data = userProfileSchema.parse(req.body);
+
+        logger.info(`Updating profile for user: ${userId}`);
 
         const updatedUser = await userService.updateProfile(userId, data);
 

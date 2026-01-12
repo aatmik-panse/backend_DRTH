@@ -3,6 +3,7 @@ import { EquipmentService } from './equipment.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { AppError } from '../../utils/appError';
 import { z } from 'zod';
+import logger from '../../utils/logger';
 
 const equipmentService = new EquipmentService();
 
@@ -23,6 +24,8 @@ export class EquipmentController {
         if (!req.file) {
             return next(new AppError('No image uploaded', 400));
         }
+
+        logger.info('Scanning equipment image...');
 
         const detected = await equipmentService.scanEquipment(req.file.buffer, req.file.mimetype);
 

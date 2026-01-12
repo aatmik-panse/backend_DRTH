@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { GymService } from './gym.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { AppError } from '../../utils/appError';
+import logger from '../../utils/logger';
 
 const gymService = new GymService();
 
@@ -16,9 +17,12 @@ const selectGymSchema = z.object({
     gymId: z.string(),
 });
 
+
 export class GymController {
     getNearbyGyms = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         const { lat, lng, radius } = nearbySchema.parse(req.query);
+
+        logger.info(`Fetching nearby gyms for lat: ${lat}, lng: ${lng}, radius: ${radius}`);
 
         const gyms = await gymService.getNearbyGyms(lat, lng, radius);
 
@@ -29,7 +33,7 @@ export class GymController {
     });
 
     getGym = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const gym = await gymService.getGym(id);
 
         if (!gym) {

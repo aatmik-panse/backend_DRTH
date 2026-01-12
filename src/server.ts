@@ -1,10 +1,11 @@
 import { env } from './config/env';
 import app from './app';
+import logger from './utils/logger';
 
 const port = env.PORT;
 
 const server = app.listen(port, () => {
-    console.log(`App running on port ${port}...`);
+    logger.info(`App running on port ${port}...`);
 });
 
 process.on('unhandledRejection', (err: any) => {
