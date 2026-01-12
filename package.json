@@ -4,6 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,6 +17,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -20,6 +26,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "pg": "^8.16.3",
     "zod": "^4.3.5",
     "zod-to-json-schema": "^3.25.1"
   },
@@ -29,6 +36,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.0.3",
+    "@types/pg": "^8.16.0",
     "nodemon": "^3.1.11",
     "prisma": "^7.2.0",
     "ts-node": "^10.9.2",
