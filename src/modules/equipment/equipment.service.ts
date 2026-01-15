@@ -13,11 +13,23 @@ const equipmentItemSchema = z.object({
     name: z.string(),
     category: z.string().default('machines'),
     confidence: z.number(),
+    icon: z.string().optional(),
 });
 
 const equipmentResponseSchema = z.object({
     equipment: z.array(equipmentItemSchema)
 });
+
+// Standard Equipment List for AI Reference
+const STANDARD_EQUIPMENT_LIST = `
+- Free Weights: Barbell 🏋️‍♂️, Dumbbells 💪, Kettlebells 🔔, EZ Bar ➰, Bench Press 🪑, Incline Bench Press 📐, Decline Bench Press 📉, Squat Rack ⛩️, Power Rack 🏢, Smith Machine 🤖, Preacher Curl Bench 🙏
+- Machines: Leg Press 🦵, Leg Extension 🦵, Leg Curl 🍤, Hack Squat 🏋️, Chest Press Machine 🚪, Shoulder Press Machine 🆙, Lat Pulldown ⬇️, Seated Cable Row 🚣, Pec Deck / Fly Machine 🦋, Assisted Pull-up Machine 🆘, Calf Raise Machine 👠, Abdominal Crunch Machine 🍫, Hip Abduction/Adduction ↔️
+- Machines (Extended): Chest Fly Machine 🦅, Iso-Lateral Chest Press 👐, Incline Chest Press Machine 📐, Seated Leg Press 🪑, Standing Leg Curl 🧍, Lying Leg Curl 🛏️, Glute Kickback Machine 🍑, Hip Thrust Machine 🚀, Vertical Row Machine 🚣, Low Row Machine 🚣‍♀️, High Row Machine 🦅, Pullover Machine 🙆, Lateral Raise Machine 👐, Rear Delt Fly Machine 🔙, Bicep Curl Machine 💪, Tricep Extension Machine 💪, Tricep Dip Machine ⏬, Ab Coaster 🎢, Torso Rotation Machine 🔄, Seated Ab Crunch 🍫, Standing Calf Raise Machine 🕴️, Seated Calf Raise Machine 🪑, Smith Squat Machine 🤖, V-Squat Machine ✌️, Pendulum Squat Machine 🕰️, Selectorized Multi-Gym 🏗️
+- Cable: Cable Crossover ❌, Functional Trainer 🏋️
+- Cardio: Treadmill 🏃, Elliptical 🚶, Stationary Bike 🚴, Rowing Machine 🚣, Stair Climber 🪜, Assault Bike 💨, SkiErg ⛷️
+- Bodyweight: Pull-up Bar 🆙, Dip Station ⏬, Parallel Bars ⏸️, Roman Chair / Back Extension 🏹, Plyometric Box 📦, TRX / Suspension Trainer 🎗️, Gymnastic Rings ⭕
+- Other: Medicine Ball 🏐, Slam Ball 🌑, Battle Ropes 〰️, Landmine Attachment 💣, Trap Bar / Hex Bar 🛑
+`;
 
 export class EquipmentService {
     async getAllEquipment() {
@@ -43,14 +55,34 @@ export class EquipmentService {
         });
 
         const prompt = `
-      Identify ALL gym equipment visible in this image. 
-      Do not limit the output to a single item. List every distinct machine, bench, rack, and weight station you can see, including those in the background.
-      Return a JSON object with a key "equipment", where each item is an object with fields:
-      - "name": Specific string name of the equipment (e.g. "Incline Bench Press", "Hammer Strength Chest Press", "Dumbbell Rack")
+      Identify ALL gym equipment visible in this image.
+      
+      STRICTLY match the identified equipment to one of the following Standardized Equipment Names if possible. 
+      If a direct match exists, use the Exact Name and the corresponding Icon from the list below.
+      
+      ${STANDARD_EQUIPMENT_LIST}
+      
+      If the equipment is NOT in the list, provide a descriptive name and a suitable emoji icon.
+
+      Return a JSON object with a key "equipment", containing an array of OBJECTS.
+      Each object MUST have:
+      - "name": Standardized string name of the equipment
       - "category": String, strictly one of: "free_weights", "machines", "cable", "cardio", "bodyweight"
       - "confidence": Number between 0 and 1. Include items with confidence score > 0.5.
-      If there are multiple identical machines, list them as separate items.
-      Prioritize finding as many detecting items as possible.
+      - "icon": The emoji icon associated with the equipment.
+
+      IMPORTANT:
+      - Return ONLY a valid JSON structure.
+      - Do NOT return a flat list or numbers.
+      - Do NOT returns strings as items, only objects.
+      
+      Example valid response:
+      {
+        "equipment": [
+          { "name": "Bench Press", "category": "free_weights", "confidence": 0.95, "icon": "🪑" },
+          { "name": "Treadmill", "category": "cardio", "confidence": 0.9, "icon": "🏃" }
+        ]
+      }
     `;
 
         const imagePart = {
@@ -80,24 +112,70 @@ export class EquipmentService {
                 if (match) {
                     parsedData = JSON.parse(match[1]);
                 } else {
-                    throw e;
+                    parsedData = { equipment: [] }; // Fallback
                 }
             }
 
-            // Robust parsing: Handle if it returns strings instead of objects
-            let detectedItems: { name: string, category: string, confidence: number }[] = [];
+            // Map response to internal structure
+            let detectedItems: { id: string, name: string, category: string, confidence: number, icon?: string }[] = [];
 
-            if (parsedData.equipment && Array.isArray(parsedData.equipment)) {
-                detectedItems = parsedData.equipment.map((item: any) => {
-                    if (typeof item === 'string') {
-                        return { name: item, category: 'machines', confidence: 0.9 };
+            if (parsedData && parsedData.equipment && Array.isArray(parsedData.equipment)) {
+                // Filter out nulls and purely numeric garbage (e.g. -1.0101)
+                let rawList = parsedData.equipment.filter((i: any) => i !== null && typeof i !== 'number');
+
+                // Handle "Flat Array" malformed JSON from Gemini (e.g. ["name", "Bench", "category", "machines"...])
+                const isFlatArray = rawList.length > 0 &&
+                    rawList.some((i: any) => typeof i === 'string' && ['name', 'category'].includes(i)) &&
+                    !rawList.some((i: any) => typeof i === 'string' && i.trim().startsWith('{'));
+
+                if (isFlatArray) {
+                    const reconstructed = [];
+                    let currentObj: any = {};
+
+                    for (let i = 0; i < rawList.length; i++) {
+                        const key = rawList[i];
+                        // If key is a known field, look ahead
+                        if (['name', 'category', 'confidence', 'icon'].includes(key) && i + 1 < rawList.length) {
+                            currentObj[key] = rawList[i + 1];
+                            i++; // Skip value
+
+                            // If we have a name, and maybe category, consider it a potential object or wait for more
+                            // Simple heuristic: if we have name and category, or just name and next key is name, push
+                        } else if (key === 'name') {
+                            // Start of new object?
+                            if (Object.keys(currentObj).length > 0) {
+                                reconstructed.push(currentObj);
+                                currentObj = {};
+                            }
+                        }
                     }
-                    return {
-                        name: item.name || 'Unknown',
-                        category: item.category || 'machines',
-                        confidence: item.confidence || 0.8
-                    };
-                });
+                    if (currentObj.name) reconstructed.push(currentObj);
+
+                    // If flat array logic worked, use it. Otherwise rely on standard mapping.
+                    if (reconstructed.length > 0) rawList = reconstructed;
+                }
+
+                detectedItems = rawList.map((item: any) => {
+                    // Handle double-encoded JSON strings (e.g. "{\"name\": \"...\"}")
+                    if (typeof item === 'string' && item.trim().startsWith('{')) {
+                        try {
+                            return JSON.parse(item);
+                        } catch (e) {
+                            return { name: item };
+                        }
+                    }
+                    // Handle plain strings that survived filtering
+                    if (typeof item === 'string') {
+                        return { name: item, category: 'machines', confidence: 0.9, icon: '🏋️' };
+                    }
+                    return item;
+                }).map((item: any) => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: item.name || 'Unknown Machine',
+                    category: item.category || 'machines',
+                    confidence: item.confidence || 0.8,
+                    icon: item.icon || '🏋️'
+                }));
             }
 
             return detectedItems;
