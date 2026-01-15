@@ -43,13 +43,14 @@ export class EquipmentService {
         });
 
         const prompt = `
-      Identify the gym equipment in this image. 
-      Focus on standard gym equipment like: Bench Press, Squat Rack, Dumbbells, Treadmill, Leg Press, etc.
+      Identify ALL gym equipment visible in this image. 
+      Do not limit the output to a single item. List every distinct machine, bench, rack, and weight station you can see, including those in the background.
       Return a JSON object with a key "equipment", where each item is an object with fields:
-      - "name": String name of the equipment
+      - "name": Specific string name of the equipment (e.g. "Incline Bench Press", "Hammer Strength Chest Press", "Dumbbell Rack")
       - "category": String, strictly one of: "free_weights", "machines", "cable", "cardio", "bodyweight"
-      - "confidence": Number between 0 and 1
-      Only return equipment with high confidence.
+      - "confidence": Number between 0 and 1. Include items with confidence score > 0.5.
+      If there are multiple identical machines, list them as separate items.
+      Prioritize finding as many detecting items as possible.
     `;
 
         const imagePart = {
