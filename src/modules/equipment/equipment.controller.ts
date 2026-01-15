@@ -22,13 +22,20 @@ export class EquipmentController {
 
     scanEquipment = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
         const startTime = Date.now();
-        if (!req.file) {
-            return next(new AppError('No image uploaded', 400));
+
+        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+            return next(new AppError('No images uploaded', 400));
         }
 
-        logger.info(`Scanning equipment image... Size: ${req.file.size} bytes, Mime: ${req.file.mimetype}`);
+        const files = req.files as Express.Multer.File[];
+        logger.info(`Scanning ${files.length} equipment images...`);
 
-        const detected = await equipmentService.scanEquipment(req.file.buffer, req.file.mimetype);
+        const images = files.map(file => ({
+            buffer: file.buffer,
+            mimeType: file.mimetype
+        }));
+
+        const detected = await equipmentService.scanEquipment(images);
 
         logger.info(`Scan completed in ${Date.now() - startTime}ms. Detected ${detected.length} items.`);
 

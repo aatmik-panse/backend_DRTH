@@ -7,7 +7,7 @@ const router = express.Router();
 const equipmentController = new EquipmentController();
 
 router.get('/', equipmentController.getAllEquipment);
-router.post('/scan', protect, upload.single('image'), equipmentController.scanEquipment);
+router.post('/scan', protect, upload.array('images', 10), equipmentController.scanEquipment);
 
 router.get('/user', protect, equipmentController.getUserEquipment);
 router.post('/user', protect, equipmentController.addUserEquipment);
