@@ -37,9 +37,19 @@ export class WorkoutService {
         console.log(`Generating workout plan for user ${userId}`);
         console.log(`Split: ${splitType}, Equipment: ${equipmentNames.join(', ')}`);
 
-        // Use the reliable fallback plan directly instead of AI
-        // AI integration was returning garbage data (200+ days instead of 7)
-        const aiPlan = this.getFallbackPlan(splitType, user.fitnessGoal || 'muscle_gain');
+        // Re-enabling AI generation with refined prompt
+        let aiPlan;
+        try {
+            aiPlan = await this.generateExercisesWithAI(
+                splitType,
+                equipmentNames,
+                user.fitnessGoal || 'muscle_gain',
+                user.experienceLevel || 'beginner'
+            );
+        } catch (error) {
+            console.error('AI generation failed, using fallback:', error);
+            aiPlan = this.getFallbackPlan(splitType, user.fitnessGoal || 'muscle_gain');
+        }
 
         // Create the plan in database
         const plan = await prisma.workoutPlan.create({
@@ -54,17 +64,19 @@ export class WorkoutService {
         const createdDays = [];
 
         // Log raw AI response for debugging
-        console.log('Raw AI plan days count:', aiPlan?.days?.length);
         console.log('AI plan structure:', JSON.stringify(aiPlan, null, 2));
 
         // Validate AI response
         if (!aiPlan || !aiPlan.days || !Array.isArray(aiPlan.days)) {
-            console.error('Invalid AI plan structure:', aiPlan);
-            throw new AppError('AI generated invalid plan structure', 500);
+            console.error('Invalid AI plan structure, using fallback');
+            aiPlan = this.getFallbackPlan(splitType, user.fitnessGoal || 'muscle_gain');
         }
 
-        for (let i = 0; i < aiPlan.days.length; i++) {
-            const dayData = aiPlan.days[i];
+        // Ensure we only process at most 7 days to prevent hallucination of "200+ days"
+        const daysToProcess = aiPlan.days.slice(0, 7);
+
+        for (let i = 0; i < daysToProcess.length; i++) {
+            const dayData = daysToProcess[i];
 
             // Skip null entries but be lenient with validation
             if (!dayData) {
@@ -153,12 +165,15 @@ VOLUME GUIDANCE:
 ${volumeGuidance}
 
 INSTRUCTIONS:
-1. Create a 7-day workout plan following the ${splitType} split
+1. Create EXACTLY a 7-day workout plan (Day 1 to Day 7). 
+2. Never exceed 7 days.
 2. For each non-rest day, include 4-6 exercises targeting the specified muscle groups
 3. ONLY use exercises that can be performed with the available equipment
 4. If no equipment is available, use bodyweight exercises only
-5. Include sets and reps appropriate for the user's fitness goal
-6. Add brief notes for form tips or variations when helpful
+5. CRITICAL: For the exercise "name", use the real name of the exercise (e.g., "Incline Bench Press"). Never use category names like "machines" or "free weights" as the exercise name.
+6. If no equipment is available, use bodyweight exercises only.
+7. Include sets (as a number) and reps (as a string, e.g., "10-12") appropriate for the user's fitness goal.
+8. Add brief notes for form tips or variations when helpful.
 
 Return a JSON object with this exact structure:
 {

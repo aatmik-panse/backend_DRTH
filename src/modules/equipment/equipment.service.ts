@@ -47,34 +47,25 @@ export class EquipmentService {
         }
 
         const prompt = `
-      Identify ALL gym equipment visible in these ${images.length} images.
-      The images are different angles or views of the same gym area or specific equipment.
-      Consolidate the findings into a single unique list of equipment suitable for the user's inventory.
+      Task: Identify all gym equipment in the provided images.
       
-      STRICTLY match the identified equipment to one of the following Standardized Equipment Names if possible. 
-      If a direct match exists, use the Exact Name from the list below.
-      
+      Instructions:
+      1. Provide a unique list of found items.
+      2. For each item, use the most accurate name from this list if it matches:
       ${STANDARD_EQUIPMENT_LIST}
-      
-      If the equipment is NOT in the list, provide a descriptive name.
+      3. If no match, provide a clear, descriptive name.
+      4. CRITICAL: Never use a category name (e.g., 'machines', 'cardio') or a technical field name (e.g., 'confidence', 'name') as the equipment name itself.
+      5. Consolidate items detected across multiple images into one single list without duplicates.
 
-      Return a JSON object with a key "equipment", containing an array of OBJECTS.
-      Each object MUST be a standard JSON object.
-      
-      Structure:
+      Format Requirement:
+      Return a JSON object with the key "equipment", which is an array of objects.
+      Example structure:
       {
         "equipment": [
-          { "name": "Leg Press", "category": "machines", "confidence": 0.98 },
+          { "name": "Leg Press", "category": "machines", "confidence": 0.99 },
           { "name": "Dumbbells", "category": "free_weights", "confidence": 0.95 }
         ]
       }
-
-      CRITICAL INSTRUCTIONS:
-      1. Do NOT return a flat list like ["name", "Leg Press"...].
-      2. Do NOT return numbers like 123 or -1.1.
-      3. Do NOT return strings as items.
-      4. ONLY return an array of OBJECTS.
-      5. Do NOT return an "icon" field.
     `;
 
         const imageParts = images.map(img => ({
@@ -89,7 +80,7 @@ export class EquipmentService {
             console.log(`Sending request to Gemini with ${images.length} images...`);
             const startGemini = Date.now();
 
-            // Using new @google/genai SDK pattern
+            // Using stable model name and forcing JSON response
             const response = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
                 config: {
